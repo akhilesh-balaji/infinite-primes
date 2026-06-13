@@ -1,0 +1,19 @@
+name = "InfinitePrimes"
+version = "0.1.0"
+defaultTargets = ["infiniteprimes"]
+
+[[lean_lib]]
+name = "InfinitePrimes"
+
+[[lean_exe]]
+name = "infiniteprimes"
+root = "Main"
+
+[[require]]
+name = "cslib"
+scope = "leanprover"
+rev = "main"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
