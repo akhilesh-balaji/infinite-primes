@@ -1,6 +1,5 @@
-import Cslib.Computability.Languages.RegularLanguage
 import Cslib.Computability.Languages.MyhillNerode
-import Mathlib.Algebra.Prime.Defs
+import Mathlib.Analysis.Normed.Ring.Lemmas
 import Mathlib.Data.ZMod.Basic
 import Mathlib.Tactic
 
@@ -153,13 +152,60 @@ theorem L_p_not_regular : ¬L_p.IsRegular := by
   rw [L_p_eq_L_p'] at h
   apply IsRegular.iff_finite_nerodeQuotient.mp at h
   unfold L_p' NerodeQuotient NerodeCongruence at h
-  sorry
-  /- apply Finite.of_injective (Quotient.lift (fun w => (ξ w : ZMod n)) _) -/
-  /- · sorry -/
-  /- · sorry -/
+  apply Finite.not_infinite h
+  apply Infinite.of_injective (fun k : ℕ =>
+    Quotient.mk _ (List.replicate (3 * k) true))
+  intro i j hij
+  by_contra hne
+  rcases lt_or_gt_of_ne hne with h_lt | h_lt
+  · have heq := Quotient.exact hij
+    have hdist := heq (List.replicate (3 * i + 1) false)
+    have hdist' :
+        (|ξ (List.replicate (3 * i) true ++ List.replicate (3 * i + 1) false)| ≠ 1) ↔
+        (|ξ (List.replicate (3 * j) true ++ List.replicate (3 * i + 1) false)| ≠ 1) := hdist
+    rw [ξ_additive, ξ_additive, ξ_replicate_true, ξ_replicate_true, ξ_replicate_false] at hdist'
+    have hA : ((3 * i : ℕ) : ℤ) + -((3 * i + 1 : ℕ) : ℤ) = -1 := by push_cast; ring
+    rw [hA, abs_neg, abs_one] at hdist'
+    have hcontra : ¬ ((1 : ℤ) ≠ 1) := fun hh => hh rfl
+    have hB1 : |((3 * j : ℕ) : ℤ) + -((3 * i + 1 : ℕ) : ℤ)| = 1 := by
+      by_contra hne'
+      exact hcontra (hdist'.mpr hne')
+    have hB : ((3 * j : ℕ) : ℤ) + -((3 * i + 1 : ℕ) : ℤ) = 3 * ((j : ℤ) - (i : ℤ)) - 1 := by
+      push_cast; ring
+    rw [hB] at hB1
+    have hji : (1 : ℤ) ≤ (j : ℤ) - (i : ℤ) := by
+      have h' : i + 1 ≤ j := h_lt
+      have h'' : ((i : ℤ) + 1) ≤ (j : ℤ) := by exact_mod_cast h'
+      linarith
+    have hge : (2 : ℤ) ≤ 3 * ((j : ℤ) - (i : ℤ)) - 1 := by linarith
+    rw [abs_of_pos (by linarith)] at hB1
+    linarith
+  · have heq := Quotient.exact hij.symm
+    have hdist := heq (List.replicate (3 * j + 1) false)
+    have hdist' :
+        (|ξ (List.replicate (3 * j) true ++ List.replicate (3 * j + 1) false)| ≠ 1) ↔
+        (|ξ (List.replicate (3 * i) true ++ List.replicate (3 * j + 1) false)| ≠ 1) := hdist
+    rw [ξ_additive, ξ_additive, ξ_replicate_true, ξ_replicate_true, ξ_replicate_false] at hdist'
+    have hA : ((3 * j : ℕ) : ℤ) + -((3 * j + 1 : ℕ) : ℤ) = -1 := by push_cast; ring
+    rw [hA, abs_neg, abs_one] at hdist'
+    have hcontra : ¬ ((1 : ℤ) ≠ 1) := fun hh => hh rfl
+    have hB1 : |((3 * i : ℕ) : ℤ) + -((3 * j + 1 : ℕ) : ℤ)| = 1 := by
+      by_contra hne'
+      exact hcontra (hdist'.mpr hne')
+    have hB : ((3 * i : ℕ) : ℤ) + -((3 * j + 1 : ℕ) : ℤ) = 3 * ((i : ℤ) - (j : ℤ)) - 1 := by
+      push_cast; ring
+    rw [hB] at hB1
+    have hij' : (1 : ℤ) ≤ (i : ℤ) - (j : ℤ) := by
+      have h' : j + 1 ≤ i := h_lt
+      have h'' : ((j : ℤ) + 1) ≤ (i : ℤ) := by exact_mod_cast h'
+      linarith
+    have hge : (2 : ℤ) ≤ 3 * ((i : ℤ) - (j : ℤ)) - 1 := by linarith
+    rw [abs_of_pos (by linarith)] at hB1
+    linarith
 
 theorem infinite_primes : {p : ℕ | Prime p}.Infinite := by
-  have h_L_is_reg : ∀ (i : ℕ) (hp : Prime i), Language.IsRegular (@L i ⟨hp.ne_zero⟩) := by expose_names; exact fun i hp => @L_n_regular i ⟨hp.ne_zero⟩
+  have h_L_is_reg : ∀ (i : ℕ) (hp : Prime i), Language.IsRegular (@L i ⟨hp.ne_zero⟩) := by
+    exact fun i hp => @L_n_regular i ⟨hp.ne_zero⟩
   have h_L_p'_not_reg : ¬Language.IsRegular L_p' := by rw [← L_p_eq_L_p']; exact L_p_not_regular
   by_contra h
   simp at h
@@ -227,3 +273,4 @@ theorem infinite_primes : {p : ℕ | Prime p}.Infinite := by
   have h_L_p_reg : Language.IsRegular L_p := h_L_p_eq_sum ▸ h_sum_reg
   have h_L_p'_reg : Language.IsRegular L_p' := L_p_eq_L_p' ▸ h_L_p_reg
   exact h_L_p'_not_reg h_L_p'_reg
+
