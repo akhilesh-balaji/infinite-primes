@@ -111,6 +111,11 @@ theorem L_n_regular (n : ℕ) [NeZero n] : (L n).IsRegular := by
 def L_p : Language Bool := {w | ∃ (i : ℕ) (h : Prime i), w ∈ @L i ⟨h.ne_zero⟩}
 def L_p' : Language Bool := (|ξ ·| ≠ 1)  -- {w | |ξ w| = 1}
 
+theorem L_p_eq_inf_union : {w | ∃ (i : ℕ), ∃ (h : Prime i), w ∈ @L i ⟨h.ne_zero⟩} = ⋃ i : ℕ, ⋃ (h : Prime i), @L i ⟨h.ne_zero⟩ := by
+  ext w
+  simp only [Set.mem_setOf_eq, Set.mem_iUnion]
+  exact Eq.to_iff rfl
+
 theorem L_p_eq_L_p' : L_p = L_p' := by
   unfold L_p L_p' L
   ext x
@@ -143,7 +148,84 @@ theorem L_p_eq_L_p' : L_p = L_p' := by
         exact_mod_cast hp_dvd
     exact ⟨p, hp_prime.prime, hp_dvd'⟩
 
-theorem L_not_regular : ¬L_p.IsRegular := by sorry
+theorem L_p_not_regular : ¬L_p.IsRegular := by
+  by_contra h
+  rw [L_p_eq_L_p'] at h
+  apply IsRegular.iff_finite_nerodeQuotient.mp at h
+  unfold L_p' NerodeQuotient NerodeCongruence at h
+  sorry
+  /- apply Finite.of_injective (Quotient.lift (fun w => (ξ w : ZMod n)) _) -/
+  /- · sorry -/
+  /- · sorry -/
 
-theorem infinite_primes : Set.Infinite {p : ℕ | Prime p} := by sorry
-
+instance : EmptyCollection (Language Bool) := ⟨{w | False}⟩
+theorem infinite_primes : {p : ℕ | Prime p}.Infinite := by
+  have h_L_is_reg : ∀ (i : ℕ) (hp : Prime i), Language.IsRegular (@L i ⟨hp.ne_zero⟩) := by expose_names; exact fun i hp => @L_n_regular i ⟨hp.ne_zero⟩
+  have h_L_p'_not_reg : ¬Language.IsRegular L_p' := by rw [← L_p_eq_L_p']; exact L_p_not_regular
+  by_contra h
+  simp at h
+  have hS : ∃ (S : Finset ℕ), ∀ p, p ∈ S ↔ Prime p := Set.Finite.exists_finset h
+  rcases hS with ⟨S, hS_iff⟩
+  let L_wrap (i : ℕ) : Language Bool :=
+    if hp : Prime i then @L i ⟨hp.ne_zero⟩ else ∅
+  have h_wrap_reg : ∀ i ∈ S, Language.IsRegular (L_wrap i) := by
+    intro i _
+    dsimp [L_wrap]
+    split_ifs with hp
+    · exact h_L_is_reg  i hp
+    · sorry
+  have h_list_sum_mp : ∀ (l : List ℕ) (w : List Bool) (i : ℕ),
+  i ∈ l → w ∈ L_wrap i → w ∈ (l.map L_wrap).sum := by
+    intro l w i hi hw_i
+    induction' l with head tail ih
+    · contradiction
+    · simp only [List.map_cons, List.sum_cons]
+      simp only [List.mem_cons] at hi
+      rcases hi with rfl | hi_tail
+      · exact Or.inl hw_i
+      · sorry
+  have h_list_sum_mpr : ∀ (l : List ℕ) (w : List Bool),
+    w ∈ (l.map L_wrap).sum → ∃ i ∈ l, w ∈ L_wrap i := by
+    intro l w 
+    induction' l with head tail ih
+    · intro hw
+      contradiction
+    · intro hw
+      simp only [List.map_cons, List.sum_cons] at hw
+      cases hw with
+      | inl h_head =>
+        use head
+        exact ⟨sorry, h_head⟩
+      | inr h_tail =>
+        rcases ih h_tail with ⟨i, hi_tail, hw_i⟩
+        use i
+        exact ⟨sorry, hw_i⟩
+  have h_sum_reg : Language.IsRegular (S.toList.map L_wrap).sum :=
+    Language.IsRegular.finset_union S L_wrap h_wrap_reg 
+  have h_L_p_eq_sum : L_p = (S.toList.map L_wrap).sum := by
+    unfold L_p
+    rw [L_p_eq_inf_union]
+    ext w
+    constructor
+    · intro hw
+      simp only [Set.mem_iUnion] at hw
+      rcases hw with ⟨i, hp, hw_in_L⟩
+      have hi_mem_S : i ∈ S.toList := Finset.mem_toList.mpr ((hS_iff i).mpr hp)
+      have hw_in_wrap : w ∈ L_wrap i := by
+        dsimp [L_wrap]
+        split_ifs with hp'
+        · exact hw_in_L
+        · contradiction
+      exact h_list_sum_mp S.toList w i hi_mem_S hw_in_wrap
+    · intro hw
+      rcases h_list_sum_mpr S.toList w hw with ⟨i, hi_mem_S, hw_in_wrap⟩
+      have hp : Prime i := (hS_iff i).mp (Finset.mem_toList.mp hi_mem_S)
+      simp only [Set.mem_iUnion]
+      use i, hp
+      dsimp [L_wrap] at hw_in_wrap
+      split_ifs at hw_in_wrap with hp'
+      · exact hw_in_wrap
+      · contradiction
+  have h_L_p_reg : Language.IsRegular L_p := h_L_p_eq_sum ▸ h_sum_reg
+  have h_L_p'_reg : Language.IsRegular L_p' := L_p_eq_L_p' ▸ h_L_p_reg
+  exact h_L_p'_not_reg h_L_p'_reg
